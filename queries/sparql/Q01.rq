@@ -1,0 +1,14 @@
+PREFIX sn: <http://www.ldbc.eu/ldbc_socialnet/1.0/vocabulary/>
+
+SELECT ?firstName ?lastName ?gender ?birthday
+WHERE {
+  ?person a sn:Person ;
+          sn:id ?id ;
+          sn:firstName ?firstName ;
+          sn:lastName ?lastName .
+
+  FILTER (?id = 933)
+
+  OPTIONAL { ?person sn:gender ?gender . }
+  OPTIONAL { ?person sn:birthday ?birthday . }
+}
