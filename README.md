@@ -125,11 +125,15 @@ Plik z podsumowaniem wyników zawiera m.in.:
 
 * średnią,
 * medianę,
+* odchylenie standardowe,
+* wariancję,
 * minimum,
 * maksimum,
-* odchylenie standardowe,
-* percentyl 95,
-* minimalną i maksymalną liczbę rekordów.
+* rozstęp,
+* współczynnik zmienności,
+* percentyle P25, P50, P75, P90, P95 i P99,
+* minimalną i maksymalną liczbę rekordów,
+* informację, czy liczba rekordów była stabilna w kolejnych powtórzeniach.
 
 Drugi plik zawiera pojedyncze pomiary wykonania zapytań, m.in.:
 
