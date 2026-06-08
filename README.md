@@ -13,8 +13,8 @@ Projekt powstał na potrzeby pracy magisterskiej dotyczącej analizy porównawcz
 ## Wymagania
 
 - Python 3.13,
-- Apache Jena Fuseki,
-- Neo4j,
+- Apache Jena Fuseki 6.0.0,
+- Neo4j 2026.04.0 uruchamiany lokalnie przez Neo4j Desktop 2.1.4.
 - biblioteki Python wymienione w pliku `requirements.txt`.
 
 ## Instalacja zależności
