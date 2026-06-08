@@ -76,13 +76,24 @@ def compute_stats(times_ms: List[float]) -> Dict[str, float]:
             "Parametr repeats musi być większy lub równy 1."
         )
 
+    mean_ms = statistics.mean(times_ms)
+    stddev_ms = statistics.stdev(times_ms) if len(times_ms) > 1 else 0.0
+
     return {
-        "mean_ms": statistics.mean(times_ms),
+        "mean_ms": mean_ms,
         "median_ms": statistics.median(times_ms),
+        "stddev_ms": stddev_ms,
+        "variance_ms2": statistics.variance(times_ms) if len(times_ms) > 1 else 0.0,
         "min_ms": min(times_ms),
         "max_ms": max(times_ms),
-        "stddev_ms": statistics.stdev(times_ms) if len(times_ms) > 1 else 0.0,
+        "range_ms": max(times_ms) - min(times_ms),
+        "coefficient_of_variation": stddev_ms / mean_ms if mean_ms != 0 else 0.0,
+        "p25_ms": percentile(times_ms, 25),
+        "p50_ms": percentile(times_ms, 50),
+        "p75_ms": percentile(times_ms, 75),
+        "p90_ms": percentile(times_ms, 90),
         "p95_ms": percentile(times_ms, 95),
+        "p99_ms": percentile(times_ms, 99),
     }
 
 
@@ -650,10 +661,18 @@ def write_csv(path: Path, rows: List[Dict[str, Any]]) -> None:
         "record_count_stable",
         "mean_ms",
         "median_ms",
+        "stddev_ms",
+        "variance_ms2",
         "min_ms",
         "max_ms",
-        "stddev_ms",
+        "range_ms",
+        "coefficient_of_variation",
+        "p25_ms",
+        "p50_ms",
+        "p75_ms",
+        "p90_ms",
         "p95_ms",
+        "p99_ms",
     ]
 
     rounded_rows = []
@@ -661,7 +680,22 @@ def write_csv(path: Path, rows: List[Dict[str, Any]]) -> None:
     for row in rows:
         formatted = row.copy()
 
-        for key in ["mean_ms", "median_ms", "min_ms", "max_ms", "stddev_ms", "p95_ms"]:
+        for key in [
+            "mean_ms",
+            "median_ms",
+            "stddev_ms",
+            "variance_ms2",
+            "min_ms",
+            "max_ms",
+            "range_ms",
+            "coefficient_of_variation",
+            "p25_ms",
+            "p50_ms",
+            "p75_ms",
+            "p90_ms",
+            "p95_ms",
+            "p99_ms",
+        ]:
             if key in formatted and isinstance(formatted[key], (int, float)):
                 formatted[key] = f"{formatted[key]:.3f}".replace(".", ",")
 
