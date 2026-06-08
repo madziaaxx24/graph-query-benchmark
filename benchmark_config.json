@@ -2,7 +2,9 @@
   "settings": {
     "warmups": 10,
     "repeats": 30,
-    "timeout_seconds": 300,
+    "http_timeout_seconds": 300,
+    "query_timeout_seconds": 300,
+    "fuseki_query_timeout_ms": 300000,
     "cold_reset_sleep_seconds": 15,
     "fuseki_cold_reset_command": "",
     "neo4j_cold_reset_command": ""
@@ -13,7 +15,7 @@
       "fuseki_endpoint": "http://localhost:3030/ldbc_sf01/query",
       "neo4j_uri": "bolt://localhost:7687",
       "neo4j_user": "neo4j",
-      "neo4j_password": "ZMIENIC",
+      "neo4j_password": "",
       "neo4j_database": "neo4j",
       "fuseki_cold_reset_command": "",
       "neo4j_cold_reset_command": ""
@@ -23,7 +25,8 @@
     {
       "name": "Q01",
       "sparql_file": "queries/sparql/Q01.rq",
-      "cypher_file": "queries/cypher/Q01.cypher"
+      "cypher_file": "queries/cypher/Q01.cypher",
+      "gql_file": "queries/gql/Q01.gql"
     }
   ]
 }
