@@ -72,7 +72,7 @@ Tryb cold cache wymaga skonfigurowania komend resetujących środowisko. Komendy
 python benchmark_graph_queries.py --config benchmark_config.json --output results/sf01_cold.csv --cache-mode cold --engines all --repeats 5
 ```
 
-Jeżeli komendy resetujące nie są ustawione, skrypt wypisze ostrzeżenie, ponieważ nie można wtedy zagwarantować prawdziwego cold cache.
+Jeżeli komendy resetujące nie są ustawione, skrypt przerwie działanie błędem. Dzięki temu wynik nie zostanie zapisany jako `cold`, jeśli cache nie został rzeczywiście zresetowany.
 
 ### Wybór wariantów zapytań
 
@@ -88,7 +88,7 @@ all     - SPARQL/Fuseki, Cypher/Neo4j oraz GQL/Neo4j
 
 ## Walidacja wyników
 
-Przed właściwymi pomiarami skrypt wykonuje osobny etap walidacji poprawności wyników, który nie jest wliczany do czasu benchmarku. Walidacja polega na pobraniu wyników z porównywanych wariantów zapytań, normalizacji wartości oraz porównaniu zbiorów rekordów.
+Przed właściwymi pomiarami skrypt wykonuje osobny etap walidacji poprawności wyników, który nie jest wliczany do czasu benchmarku. Walidacja polega na pobraniu wyników z porównywanych wariantów zapytań, normalizacji wartości oraz porównaniu kolumn wynikowych i multizbiorów rekordów. Dzięki temu sprawdzane są nie tylko wartości rekordów, ale także liczba ich wystąpień.
 
 Dla trybu `--engines all` wykonywana jest walidacja:
 
