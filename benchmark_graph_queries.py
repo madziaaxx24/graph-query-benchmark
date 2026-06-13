@@ -11,8 +11,8 @@ import statistics
 import subprocess
 import sys
 import time
+from collections import Counter
 from dataclasses import dataclass
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -208,17 +208,6 @@ def normalize_value(value: Any) -> str:
 
     text = str(value)
 
-    # Neo4j może przechowywać daty jako epochMillis, np. 628646400000.
-    # Normalizuje je do formatu YYYY-MM-DD, aby porównać z wartościami RDF.
-    if text.isdigit() and len(text) >= 11:
-        try:
-            return datetime.fromtimestamp(
-                int(text) / 1000,
-                tz=timezone.utc,
-            ).date().isoformat()
-        except (ValueError, OSError, OverflowError):
-            pass
-
     if text.endswith(".0"):
         text = text[:-2]
 
@@ -255,13 +244,13 @@ def normalize_neo4j_record(
     return tuple(row)
 
 
-def fetch_sparql_result_set(
+def fetch_sparql_result_multiset(
     session: requests.Session,
     endpoint: str,
     query: str,
     http_timeout_seconds: int,
     fuseki_query_timeout_ms: Optional[int] = None,
-) -> Tuple[List[str], set[Tuple[str, ...]]]:
+) -> Tuple[List[str], Counter[Tuple[str, ...]]]:
     headers = {
         "Accept": "application/sparql-results+json",
         "Content-Type": "application/sparql-query; charset=utf-8",
@@ -286,21 +275,20 @@ def fetch_sparql_result_set(
     columns = data.get("head", {}).get("vars", [])
     bindings = data.get("results", {}).get("bindings", [])
 
-    normalized_rows = {
+    normalized_rows = Counter(
         normalize_sparql_binding(binding, columns)
         for binding in bindings
-    }
+    )
 
     return columns, normalized_rows
 
 
-def fetch_neo4j_result_set(
+def fetch_neo4j_result_multiset(
     driver: Any,
     database: Optional[str],
     query: str,
     query_timeout_seconds: int,
-    columns: List[str],
-) -> set[Tuple[str, ...]]:
+) -> Tuple[List[str], Counter[Tuple[str, ...]]]:
     session_kwargs: Dict[str, Any] = {}
 
     if database:
@@ -310,13 +298,17 @@ def fetch_neo4j_result_set(
 
     with driver.session(**session_kwargs) as session:
         result = session.run(neo4j_query)
+        columns = list(result.keys())
         records = list(result)
         result.consume()
 
-    return {
+    normalized_rows = Counter(
         normalize_neo4j_record(record, columns)
         for record in records
-    }
+    )
+
+    return columns, normalized_rows
+
 
 def validate_query_results(
     sf: ScaleFactorConfig,
@@ -329,7 +321,8 @@ def validate_query_results(
     fuseki_query_timeout_ms: Optional[int],
 ) -> bool:
     # Walidacja jest wykonywana poza właściwym pomiarem czasu.
-    # Służy sprawdzeniu, czy warianty zapytań zwracają ten sam zbiór rekordów.
+    # Służy sprawdzeniu, czy warianty zapytań zwracają te same rekordy
+    # z taką samą liczbą wystąpień.
     print(
         f"\n[VALIDATION] SF={sf.name}, query={query.name}: "
         f"porównywanie wyników SPARQL i {other_label}",
@@ -337,7 +330,7 @@ def validate_query_results(
     )
 
     with requests.Session() as sparql_session:
-        sparql_columns, sparql_rows = fetch_sparql_result_set(
+        sparql_columns, sparql_rows = fetch_sparql_result_multiset(
             sparql_session,
             sf.fuseki_endpoint,
             sparql_text,
@@ -353,21 +346,39 @@ def validate_query_results(
     try:
         neo4j_driver.verify_connectivity()
 
-        other_rows = fetch_neo4j_result_set(
+        other_columns, other_rows = fetch_neo4j_result_multiset(
             neo4j_driver,
             sf.neo4j_database,
             other_text,
             query_timeout_seconds,
-            sparql_columns,
         )
 
     finally:
         neo4j_driver.close()
 
+    if sparql_columns != other_columns:
+        print(
+            f"[VALIDATION ERROR] SF={sf.name}, query={query.name}: "
+            f"różne kolumny wyników SPARQL i {other_label}.",
+            file=sys.stderr,
+            flush=True,
+        )
+        print(
+            f"  SPARQL columns={sparql_columns}",
+            file=sys.stderr,
+            flush=True,
+        )
+        print(
+            f"  {other_label} columns={other_columns}",
+            file=sys.stderr,
+            flush=True,
+        )
+        return False
+
     if sparql_rows == other_rows:
         print(
             f"[VALIDATION OK] SF={sf.name}, query={query.name}, "
-            f"SPARQL vs {other_label}, records={len(sparql_rows)}",
+            f"SPARQL vs {other_label}, records={sparql_rows.total()}",
             flush=True,
         )
         return True
@@ -383,21 +394,23 @@ def validate_query_results(
     )
 
     print(
-        f"  SPARQL records={len(sparql_rows)}, {other_label} records={len(other_rows)}",
+        f"  SPARQL records={sparql_rows.total()}, {other_label} records={other_rows.total()}",
         file=sys.stderr,
         flush=True,
     )
 
     if only_sparql:
+        row, count = next(iter(only_sparql.items()))
         print(
-            f"  Przykład rekordu tylko w SPARQL: {next(iter(only_sparql))}",
+            f"  Przykład rekordu tylko w SPARQL: {row}, liczba dodatkowych wystąpień={count}",
             file=sys.stderr,
             flush=True,
         )
 
     if only_other:
+        row, count = next(iter(only_other.items()))
         print(
-            f"  Przykład rekordu tylko w {other_label}: {next(iter(only_other))}",
+            f"  Przykład rekordu tylko w {other_label}: {row}, liczba dodatkowych wystąpień={count}",
             file=sys.stderr,
             flush=True,
         )
@@ -1016,11 +1029,9 @@ def main() -> None:
                             )
 
                         if not cold_reset_command:
-                            print(
-                                "[UWAGA] Tryb cold bez komendy resetującej. "
-                                "To nie gwarantuje prawdziwego cold cache.",
-                                file=sys.stderr,
-                                flush=True,
+                            raise RuntimeError(
+                                f"Tryb cold wymaga komendy resetującej cache. "
+                                f"Brak komendy dla SF={sf.name}, engine={engine}, query={query.name}."
                             )
 
                     row = measure_single_engine(
