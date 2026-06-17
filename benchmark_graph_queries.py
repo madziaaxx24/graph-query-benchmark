@@ -43,7 +43,7 @@ class ScaleFactorConfig:
 
 def read_text(path: Path) -> str:
     if not path.exists():
-        raise FileNotFoundError(f"Brak pliku: {path}")
+        raise FileNotFoundError(f"Missing file: {path}")
     return path.read_text(encoding="utf-8")
 
 
@@ -72,8 +72,8 @@ def percentile(values: List[float], p: float) -> float:
 def compute_stats(times_ms: List[float]) -> Dict[str, float]:
     if not times_ms:
         raise ValueError(
-            "Brak pomiarów do obliczenia statystyk. "
-            "Parametr repeats musi być większy lub równy 1."
+            "No measurements available to compute statistics. "
+            "The repeats parameter must be greater than or equal to 1."
         )
 
     mean_ms = statistics.mean(times_ms)
@@ -108,7 +108,7 @@ def run_command(command: Optional[str], sleep_seconds: float = 0.0) -> None:
     completed = subprocess.run(command_args, shell=False)
 
     if completed.returncode != 0:
-        raise RuntimeError(f"Komenda resetująca zakończyła się błędem: {command}")
+        raise RuntimeError(f"The reset command failed: {command}")
 
     if sleep_seconds > 0:
         time.sleep(sleep_seconds)
@@ -139,8 +139,9 @@ def run_sparql_query(
         timeout=http_timeout_seconds,
     )
     response.raise_for_status()
-    # response.json() wymusza pobranie i sparsowanie całej odpowiedzi z Fuseki.
-    # Dzięki temu mierzę wykonanie całego zapytania, a nie tylko rozpoczęcie odpowiedzi.
+    # response.json() forces the full Fuseki response to be downloaded and parsed.
+    # This ensures that the measured time covers the execution of the whole query,
+    # not only the start of the response stream.
     data = response.json()
 
     if "results" in data and "bindings" in data["results"]:
@@ -170,13 +171,14 @@ def run_neo4j_query(
 
     with driver.session(**session_kwargs) as session:
         result = session.run(neo4j_query)
-        # list(result) wymusza pobranie wszystkich rekordów z Neo4j.
-        # Bez tego można byłoby zmierzyć tylko rozpoczęcie strumienia wyników.
+        # list(result) forces all records from Neo4j to be fetched.
+        # Without this step, the benchmark could measure only the start of the result stream.
         records = list(result)
         result.consume()
         return len(records)
 
-
+# Values from SPARQL and Neo4j may have different Python representations.
+# This function converts them to a common textual form for validation.
 def normalize_value(value: Any) -> str:
     if value is None:
         return ""
@@ -274,7 +276,8 @@ def fetch_sparql_result_multiset(
 
     columns = data.get("head", {}).get("vars", [])
     bindings = data.get("results", {}).get("bindings", [])
-
+    # Counter is used instead of set to preserve duplicate rows.
+    # This makes validation compare multisets, not only unique records.
     normalized_rows = Counter(
         normalize_sparql_binding(binding, columns)
         for binding in bindings
@@ -301,7 +304,7 @@ def fetch_neo4j_result_multiset(
         columns = list(result.keys())
         records = list(result)
         result.consume()
-
+    # Counter preserves duplicate records, so result multiplicities are compared.
     normalized_rows = Counter(
         normalize_neo4j_record(record, columns)
         for record in records
@@ -320,12 +323,12 @@ def validate_query_results(
     query_timeout_seconds: int,
     fuseki_query_timeout_ms: Optional[int],
 ) -> bool:
-    # Walidacja jest wykonywana poza właściwym pomiarem czasu.
-    # Służy sprawdzeniu, czy warianty zapytań zwracają te same rekordy
-    # z taką samą liczbą wystąpień.
+    # Validation is performed outside the actual benchmark timing.
+    # It checks whether query variants return the same records
+    # with the same number of occurrences.
     print(
         f"\n[VALIDATION] SF={sf.name}, query={query.name}: "
-        f"porównywanie wyników SPARQL i {other_label}",
+        f"comparing SPARQL and {other_label} results",
         flush=True,
     )
 
@@ -355,11 +358,12 @@ def validate_query_results(
 
     finally:
         neo4j_driver.close()
-
+    # Column names and their order must match before comparing row values.
+    # This prevents false positives when queries return different projections.
     if sparql_columns != other_columns:
         print(
             f"[VALIDATION ERROR] SF={sf.name}, query={query.name}: "
-            f"różne kolumny wyników SPARQL i {other_label}.",
+            f"different result columns in SPARQL and {other_label}.",
             file=sys.stderr,
             flush=True,
         )
@@ -388,11 +392,10 @@ def validate_query_results(
 
     print(
         f"[VALIDATION ERROR] SF={sf.name}, query={query.name}: "
-        f"wyniki SPARQL i {other_label} różnią się.",
+        f"SPARQL and {other_label} results are different.",
         file=sys.stderr,
         flush=True,
     )
-
     print(
         f"  SPARQL records={sparql_rows.total()}, {other_label} records={other_rows.total()}",
         file=sys.stderr,
@@ -402,7 +405,7 @@ def validate_query_results(
     if only_sparql:
         row, count = next(iter(only_sparql.items()))
         print(
-            f"  Przykład rekordu tylko w SPARQL: {row}, liczba dodatkowych wystąpień={count}",
+            f"  Example of a record only in SPARQL: {row}, number of additional occurrences={count}",
             file=sys.stderr,
             flush=True,
         )
@@ -410,7 +413,7 @@ def validate_query_results(
     if only_other:
         row, count = next(iter(only_other.items()))
         print(
-            f"  Przykład rekordu tylko w {other_label}: {row}, liczba dodatkowych wystąpień={count}",
+            f"  Example of a record only in {other_label}: {row}, number of additional occurrences={count}",
             file=sys.stderr,
             flush=True,
         )
@@ -434,10 +437,10 @@ def measure_single_engine(
     samples: List[Dict[str, Any]],
 ) -> Dict[str, Any]:
     if engine not in {"fuseki", "neo4j", "gql"}:
-        raise ValueError(f"Nieznany silnik/wariant zapytania: {engine}")
+        raise ValueError(f"Unknown query engine/variant: {engine}")
 
     if cache_mode not in {"warm", "cold"}:
-        raise ValueError(f"Nieznany tryb cache: {cache_mode}")
+        raise ValueError(f"Unknown cache mode: {cache_mode}")
 
     times_ms: List[float] = []
     record_counts: List[int] = []
@@ -460,8 +463,8 @@ def measure_single_engine(
             sparql_session = requests.Session()
 
         try:
-            # Uruchomienia rozgrzewkowe nie są zapisywane w wynikach,
-            # ponieważ służą tylko ustabilizowaniu warm cache.
+            # Warm-up runs are not saved in the results,
+            # because they are used only to stabilize the warm cache.
             for i in range(warmups):
                 if engine == "fuseki":
                     count = run_sparql_query(
@@ -507,8 +510,9 @@ def measure_single_engine(
 
                 times_ms.append(elapsed_ms)
                 record_counts.append(count)
-                # Plik samples.csv przechowuje pojedyncze pomiary,
-                # co pozwala później analizować rozkład wyników i wartości odstające.
+                # The samples.csv file stores individual measurements,
+                # which makes it possible to analyze the distribution of results
+                # and detect outliers later.
                 samples.append({
                     "scale_factor": sf.name,
                     "engine": engine,
@@ -537,8 +541,8 @@ def measure_single_engine(
     # ----------------------------------------------------------------------
     else:
         for i in range(repeats):
-            # W trybie cold reset wykonuje przed utworzeniem sesji,
-            # aby nie używać starych połączeń po restarcie bazy.
+            # In cold-cache mode, the reset command is executed before creating a session,
+            # so that old database connections are not reused after the database restart.
             run_command(cold_reset_command, sleep_seconds=cold_reset_sleep_seconds)
 
             if engine in {"neo4j", "gql"}:
@@ -585,8 +589,9 @@ def measure_single_engine(
 
             times_ms.append(elapsed_ms)
             record_counts.append(count)
-            # Plik samples.csv przechowuje pojedyncze pomiary,
-            # co pozwala później analizować rozkład wyników i wartości odstające.
+            # The samples.csv file stores individual measurements,
+            # which makes it possible to analyze the distribution of results
+            # and detect outliers later.
             samples.append({
                 "scale_factor": sf.name,
                 "engine": engine,
@@ -658,7 +663,7 @@ def load_config(path: Path) -> Tuple[List[ScaleFactorConfig], List[QueryPair], D
 
 def write_csv(path: Path, rows: List[Dict[str, Any]]) -> None:
     if not rows:
-        raise ValueError("Brak wyników do zapisania.")
+        raise ValueError("No results to save.")
 
     path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -728,7 +733,7 @@ def write_csv(path: Path, rows: List[Dict[str, Any]]) -> None:
 
 def write_samples_csv(path: Path, samples: List[Dict[str, Any]]) -> None:
     if not samples:
-        raise ValueError("Brak próbek do zapisania.")
+        raise ValueError("No samples to save.")
 
     path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -783,8 +788,8 @@ def compare_record_counts(rows: List[Dict[str, Any]]) -> None:
 
         if not fuseki_row["record_count_stable"]:
             print(
-                f"[UWAGA] Niestabilna liczba rekordów w Fuseki: "
-                f"SF={sf}, query={query}, cache={cache_mode}, zakres={fuseki_range}",
+                f"[WARNING] Unstable record count in Fuseki: "
+                f"SF={sf}, query={query}, cache={cache_mode}, range={fuseki_range}",
                 file=sys.stderr,
                 flush=True,
             )
@@ -801,21 +806,20 @@ def compare_record_counts(rows: List[Dict[str, Any]]) -> None:
 
             if not other_row["record_count_stable"]:
                 print(
-                    f"[UWAGA] Niestabilna liczba rekordów w {other_engine}: "
-                    f"SF={sf}, query={query}, cache={cache_mode}, zakres={other_range}",
+                    f"[WARNING] Unstable record count in {other_engine}: "
+                    f"SF={sf}, query={query}, cache={cache_mode}, range={other_range}",
                     file=sys.stderr,
                     flush=True,
                 )
 
             if fuseki_range != other_range:
                 print(
-                    f"[UWAGA] Różny zakres liczby rekordów: SF={sf}, query={query}, "
+                    f"[WARNING] Different record count range: SF={sf}, query={query}, "
                     f"cache={cache_mode}, Fuseki={fuseki_range}, "
                     f"{other_engine}={other_range}",
                     file=sys.stderr,
                     flush=True,
                 )
-
 
 def validate_benchmark_parameters(
     warmups: int,
@@ -826,22 +830,22 @@ def validate_benchmark_parameters(
     cold_reset_sleep_seconds: float,
 ) -> None:
     if warmups < 0:
-        raise ValueError("Parametr warmups musi być większy lub równy 0.")
+        raise ValueError("The warmups parameter must be greater than or equal to 0.")
 
     if repeats < 1:
-        raise ValueError("Parametr repeats musi być większy lub równy 1.")
+        raise ValueError("The repeats parameter must be greater than or equal to 1.")
 
     if http_timeout_seconds < 1:
-        raise ValueError("Parametr http_timeout_seconds musi być większy lub równy 1.")
+        raise ValueError("The http_timeout_seconds parameter must be greater than or equal to 1.")
 
     if query_timeout_seconds < 1:
-        raise ValueError("Parametr query_timeout_seconds musi być większy lub równy 1.")
+        raise ValueError("The query_timeout_seconds parameter must be greater than or equal to 1.")
 
     if fuseki_query_timeout_ms is not None and fuseki_query_timeout_ms < 1:
-        raise ValueError("Parametr fuseki_query_timeout_ms musi być większy lub równy 1.")
+        raise ValueError("The fuseki_query_timeout_ms parameter must be greater than or equal to 1.")
 
     if cold_reset_sleep_seconds < 0:
-        raise ValueError("Parametr cold_reset_sleep_seconds musi być większy lub równy 0.")
+        raise ValueError("The cold_reset_sleep_seconds parameter must be greater than or equal to 0.")
 
 
 def resolve_engines(engines_arg: str) -> List[str]:
@@ -860,12 +864,12 @@ def main() -> None:
     parser.add_argument(
         "--config",
         required=True,
-        help="Ścieżka do pliku JSON z konfiguracją benchmarku.",
+        help="Path to the JSON benchmark configuration file.",
     )
     parser.add_argument(
         "--output",
         default="benchmark_results.csv",
-        help="Plik CSV z wynikami zagregowanymi.",
+        help="CSV file with aggregated results.",
     )
     parser.add_argument(
         "--cache-mode",
@@ -877,7 +881,7 @@ def main() -> None:
         choices=["both", "all", "fuseki", "neo4j", "gql"],
         default="both",
         help=(
-            "Silniki/warianty zapytań: "
+            "Query engines/variants: "
             "fuseki=SPARQL/Fuseki, neo4j=Cypher/Neo4j, "
             "gql=GQL/Neo4j, both=Fuseki+Cypher, all=Fuseki+Cypher+GQL."
         ),
@@ -891,7 +895,7 @@ def main() -> None:
     parser.add_argument(
         "--skip-validation",
         action="store_true",
-        help="Pomiń walidację.",
+        help="Skip validation.",
     )
 
     args = parser.parse_args()
@@ -973,9 +977,9 @@ def main() -> None:
 
                     if not validation_ok:
                         raise RuntimeError(
-                            f"Walidacja wyników nie powiodła się: "
-                            f"SF={sf.name}, query={query.name}, wariant=Cypher. "
-                            "Popraw zapytania przed wykonaniem benchmarku."
+                            f"Result validation failed: "
+                            f"SF={sf.name}, query={query.name}, variant=Cypher. "
+                            "Fix the queries before running the benchmark."
                         )
 
                 if "gql" in engines:
@@ -992,9 +996,9 @@ def main() -> None:
 
                     if not validation_ok:
                         raise RuntimeError(
-                            f"Walidacja wyników nie powiodła się: "
-                            f"SF={sf.name}, query={query.name}, wariant=GQL. "
-                            "Popraw zapytania przed wykonaniem benchmarku."
+                            f"Result validation failed: "
+                            f"SF={sf.name}, query={query.name}, variant=GQL. "
+                            "Fix the queries before running the benchmark."
                         )
 
             for cache_mode in cache_modes:
@@ -1012,7 +1016,7 @@ def main() -> None:
                     elif engine == "gql":
                         query_text = gql_text
                     else:
-                        raise ValueError(f"Nieznany silnik/wariant zapytania: {engine}")
+                        raise ValueError(f"Unknown query engine/variant: {engine}")
 
                     cold_reset_command = None
 
@@ -1027,11 +1031,12 @@ def main() -> None:
                                 sf.neo4j_cold_reset_command
                                 or settings.get("neo4j_cold_reset_command")
                             )
-
+                        # Cold-cache measurements are valid only when the cache is actually reset.
+                        # If no reset command is configured, the benchmark is stopped.
                         if not cold_reset_command:
                             raise RuntimeError(
-                                f"Tryb cold wymaga komendy resetującej cache. "
-                                f"Brak komendy dla SF={sf.name}, engine={engine}, query={query.name}."
+                                f"Cold cache mode requires a cache reset command. "
+                                f"Missing command for SF={sf.name}, engine={engine}, query={query.name}."
                             )
 
                     row = measure_single_engine(
@@ -1060,8 +1065,8 @@ def main() -> None:
     write_csv(output_path, rows)
     write_samples_csv(samples_path, samples)
 
-    print(f"\nZapisano wyniki do: {output_path}", flush=True)
-    print(f"Zapisano próbki do: {samples_path}", flush=True)
+    print(f"\nSaved results to: {output_path}", flush=True)
+    print(f"Saved samples to: {samples_path}", flush=True)
 
 
 if __name__ == "__main__":
