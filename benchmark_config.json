@@ -2,31 +2,83 @@
   "settings": {
     "warmups": 10,
     "repeats": 30,
-    "http_timeout_seconds": 300,
-    "query_timeout_seconds": 300,
-    "fuseki_query_timeout_ms": 300000,
+    "http_timeout_seconds": 86400,
+    "query_timeout_seconds": 86400,
+    "fuseki_query_timeout_ms": 86400000,
     "cold_reset_sleep_seconds": 15,
     "fuseki_cold_reset_command": "",
     "neo4j_cold_reset_command": ""
   },
-  "scale_factors": [
-    {
-      "name": "SF0.1",
-      "fuseki_endpoint": "http://localhost:3030/ldbc_sf01/query",
-      "neo4j_uri": "bolt://localhost:7687",
-      "neo4j_user": "neo4j",
-      "neo4j_password": "",
-      "neo4j_database": "neo4j",
-      "fuseki_cold_reset_command": "",
-      "neo4j_cold_reset_command": ""
-    }
-  ],
-  "queries": [
-    {
-      "name": "Q01",
-      "sparql_file": "queries/sparql/Q01.rq",
-      "cypher_file": "queries/cypher/Q01.cypher",
-      "gql_file": "queries/gql/Q01.gql"
-    }
-  ]
+"scale_factors": [
+  {
+    "name": "SF0.1",
+    "fuseki_endpoint": "http://localhost:3030/ldbc_sf01/query",
+    "neo4j_uri": "bolt://localhost:7687",
+    "neo4j_user": "neo4j",
+    "neo4j_password": "",
+    "neo4j_database": "neo4j"
+  }
+],
+"queries": [
+  {
+    "name": "Q01",
+    "sparql_file": "queries/sparql/Q01.rq",
+    "cypher_file": "queries/cypher/Q01.cypher",
+    "gql_file": "queries/gql/Q01.gql"
+  },
+  {
+    "name": "Q02",
+    "sparql_file": "queries/sparql/Q02.rq",
+    "cypher_file": "queries/cypher/Q02.cypher",
+    "gql_file": "queries/gql/Q02.gql"
+  },
+  {
+    "name": "Q03",
+    "sparql_file": "queries/sparql/Q03.rq",
+    "cypher_file": "queries/cypher/Q03.cypher",
+    "gql_file": "queries/gql/Q03.gql"
+  },
+  {
+    "name": "Q04",
+    "sparql_file": "queries/sparql/Q04.rq",
+    "cypher_file": "queries/cypher/Q04.cypher",
+    "gql_file": "queries/gql/Q04.gql"
+  },
+  {
+    "name": "Q05",
+    "sparql_file": "queries/sparql/Q05.rq",
+    "cypher_file": "queries/cypher/Q05.cypher",
+    "gql_file": "queries/gql/Q05.gql"
+  },
+  {
+    "name": "Q06",
+    "sparql_file": "queries/sparql/Q06.rq",
+    "cypher_file": "queries/cypher/Q06.cypher",
+    "gql_file": "queries/gql/Q06.gql"
+  },
+  {
+    "name": "Q07",
+    "sparql_file": "queries/sparql/Q07.rq",
+    "cypher_file": "queries/cypher/Q07.cypher",
+    "gql_file": "queries/gql/Q07.gql"
+  },
+  {
+    "name": "Q08",
+    "sparql_file": "queries/sparql/Q08.rq",
+    "cypher_file": "queries/cypher/Q08.cypher",
+    "gql_file": "queries/gql/Q08.gql"
+  },
+  {
+    "name": "Q09",
+    "sparql_file": "queries/sparql/Q09.rq",
+    "cypher_file": "queries/cypher/Q09.cypher",
+    "gql_file": "queries/gql/Q09.gql"
+  },
+  {
+    "name": "Q10",
+    "sparql_file": "queries/sparql/Q10.rq",
+    "cypher_file": "queries/cypher/Q10.cypher",
+    "gql_file": "queries/gql/Q10.gql"
+  }
+]
 }
