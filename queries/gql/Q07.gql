@@ -1,0 +1,8 @@
+MATCH (post IS Post)-[:HAS_CREATOR]->(person IS Person)
+MATCH (person)-[:IS_LOCATED_IN]->(location IS Place)
+RETURN
+  person.id AS personId,
+  post.id AS postId,
+  location.id AS locationId
+ORDER BY personId, postId, locationId
+LIMIT 10

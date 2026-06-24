@@ -1,0 +1,5 @@
+MATCH (person IS Person)
+RETURN
+  person.id AS id
+ORDER BY person.creationDate DESC
+LIMIT 10

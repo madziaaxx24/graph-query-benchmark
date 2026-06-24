@@ -1,0 +1,8 @@
+MATCH (content IS Post | Comment)-[:HAS_CREATOR]->(person IS Person)-[:IS_LOCATED_IN]->(location IS Place)
+WHERE content.creationDate >= 1325376000000
+RETURN
+  person.id AS personId,
+  content.id AS contentId,
+  location.id AS locationId
+ORDER BY content.creationDate DESC
+LIMIT 10

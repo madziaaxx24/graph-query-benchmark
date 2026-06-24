@@ -1,0 +1,7 @@
+MATCH (person IS Person)
+OPTIONAL MATCH (person)-[:KNOWS]->(friend IS Person)
+RETURN
+  person.id AS personId,
+  COUNT(DISTINCT friend) AS friendCount
+ORDER BY friendCount DESC, personId
+LIMIT 10

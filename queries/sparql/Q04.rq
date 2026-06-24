@@ -1,0 +1,11 @@
+PREFIX sn:  <http://www.ldbc.eu/ldbc_socialnet/1.0/vocabulary/>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+
+SELECT ?id
+WHERE {
+  ?person rdf:type sn:Person ;
+          sn:id ?id ;
+          sn:creationDate ?creationDate .
+}
+ORDER BY DESC(?creationDate)
+LIMIT 10

@@ -1,0 +1,7 @@
+MATCH (person IS Person)
+WHERE NOT EXISTS {
+  MATCH (post IS Post)-[:HAS_CREATOR]->(person)
+}
+RETURN person.id AS personId
+ORDER BY personId
+LIMIT 10
