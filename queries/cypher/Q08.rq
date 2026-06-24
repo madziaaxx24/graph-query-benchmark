@@ -1,0 +1,17 @@
+PREFIX sn: <http://www.ldbc.eu/ldbc_socialnet/1.0/vocabulary/>
+
+SELECT ?personId (COUNT(DISTINCT ?fofPerson) AS ?friendsOfFriendsCount)
+WHERE {
+?person sn:id ?personId .
+
+?person sn:knows ?knows1 .
+?knows1 sn:hasPerson ?friend .
+
+?friend sn:knows ?knows2 .
+?knows2 sn:hasPerson ?fofPerson .
+
+FILTER(?fofPerson != ?person)
+}
+GROUP BY ?personId
+ORDER BY DESC(?friendsOfFriendsCount) ?personId
+LIMIT 10

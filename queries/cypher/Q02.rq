@@ -1,0 +1,16 @@
+PREFIX sn: <http://www.ldbc.eu/ldbc_socialnet/1.0/vocabulary/>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+
+SELECT ?type (COUNT(?content) AS ?totalCount)
+WHERE {
+  {
+    ?content rdf:type sn:Post .
+    BIND("Post" AS ?type)
+  }
+  UNION
+  {
+    ?content rdf:type sn:Comment .
+    BIND("Comment" AS ?type)
+  }
+}
+GROUP BY ?type
