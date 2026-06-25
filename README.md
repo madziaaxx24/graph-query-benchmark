@@ -6,7 +6,18 @@ The benchmark was prepared for experiments based on the **LDBC Social Network Be
 
 ## Repository contents
 
+## Repository contents
 
+- `benchmark_graph_queries.py` — main benchmark script.
+- `benchmark_config.json` — benchmark configuration file.
+- `requirements.txt` — Python dependencies.
+- `queries/sparql/` — SPARQL query implementations for Apache Jena Fuseki.
+- `queries/cypher/` — Cypher query implementations for Neo4j.
+- `queries/gql/` — GQL query implementations for Neo4j.
+- `scripts/reset_fuseki.ps1` — helper script for restarting Apache Jena Fuseki during cold-cache measurements.
+- `scripts/reset_neo4j.ps1` — helper script for restarting Neo4j during cold-cache measurements.
+- `LICENSE` — project license.
+- `README.md` — repository documentation.
 
 ## Tested technologies
 
