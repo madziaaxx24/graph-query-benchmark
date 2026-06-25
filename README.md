@@ -6,8 +6,6 @@ The benchmark was prepared for experiments based on the **LDBC Social Network Be
 
 ## Repository contents
 
-## Repository contents
-
 - `benchmark_graph_queries.py` — main benchmark script.
 - `benchmark_config.json` — benchmark configuration file.
 - `requirements.txt` — Python dependencies.
