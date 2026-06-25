@@ -6,21 +6,7 @@ The benchmark was prepared for experiments based on the **LDBC Social Network Be
 
 ## Repository contents
 
-```text
-.
-├── benchmark_graph_queries.py      # Main benchmark script
-├── benchmark_config.json           # Benchmark configuration file
-├── requirements.txt                # Python dependencies
-├── queries/                        # Query implementations
-│   ├── sparql/                     # SPARQL queries for Apache Jena Fuseki
-│   ├── cypher/                     # Cypher queries for Neo4j
-│   └── gql/                        # GQL queries for Neo4j
-├── scripts/                        # Helper scripts for cold-cache measurements
-│   ├── reset_fuseki.ps1
-│   └── reset_neo4j.ps1
-├── LICENSE
-└── README.md
-```
+
 
 ## Tested technologies
 
